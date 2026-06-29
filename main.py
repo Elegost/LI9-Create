@@ -1,79 +1,116 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+
+#Imports
+from nicegui import events, ui
 import re
 
-from local_file_picker import local_file_picker
+# Functions for editable table
+def add_row() -> None:
+        new_id = max((dx['id'] for dx in table.rows), default=-1) + 1
+        name_new_variable = "Variable" + str(new_id)
+        name_new_variable = variable_Name_Already_Used(name_new_variable)
+        table.rows.append({'id': new_id, 'variable_Name': name_new_variable, 'variable_Value': ''})
+        ui.notify(f'Added new row with ID {new_id}')
+        table.update()
 
-async def pick_file() -> None:
-    result = await local_file_picker('~', multiple=True)
-    ui.notify(f'You chose {result}')
+def variable_Name_Already_Used(new_variable_name: str):
+    for row in table.rows:
+        if row['variable_Name'] == new_variable_name:
+            new_variable_name = variable_Name_Already_Used(new_variable_name + "plus")
+    return new_variable_name
 
+def get_all_variable_name():
+    set_variable_name = []
+    for row in table.rows:
+        set_variable_name.append(row['variable_Name'])
+    return set_variable_name
+
+def variable_name_unique(lst):
+    return (len(lst) <= 1 ) or (len(lst) == len(set(lst)))
+
+def rename(e: events.GenericEventArguments) -> None:
+    for row in table.rows:
+        if (variable_name_unique(get_all_variable_name())):
+            if row['id'] == e.args['id']:
+                row.update(e.args)
+        else :
+            ui.notify(f'Variable Name not unique on row with ID {e.args["id"]}');
+    ui.notify(f'Updated rows to: {table.rows}')
+    table.update()
+
+def delete(e: events.GenericEventArguments) -> None:
+    table.rows[:] = [row for row in table.rows if row['id'] != e.args['id']]
+    ui.notify(f'Deleted row with ID {e.args["id"]}')
+    table.update()
+
+#Generic Functions
 def hello_World() :
     ui.notify('Hello World')
 
+#Regex for variable name and value
 pat = re.compile(r"[a-zA-Z0-9-_.]+(\s+[a-zA-Z0-9-_.]+)*")
 
-#!/usr/bin/env python3
-from nicegui import events, ui
-
+#Page Header
 with ui.header().classes(replace='row items-center') as header:
     ui.button("Fichier", on_click=lambda: hello_World()).props('flat color=white')
 
-with ui.left_drawer().classes('bg-blue-100') as left_drawer:
+#Left Menu with list of variables
+with ui.left_drawer().classes('bg-blue-100').props('width=600') as left_drawer:
+    #Title for variable list
     ui.label('Liste des variables')
 
-    columns = [
-        {'name': 'name', 'label': 'Name', 'field': 'name'},
-        {'name': 'age', 'label': 'Age', 'field': 'age'},
-    ]
-    rows = [
-        {'id': 0, 'name': 'Alice', 'age': 18},
-        {'id': 1, 'name': 'Bob', 'age': 21},
-        {'id': 2, 'name': 'Carol'},
-    ]
-    name_options = ['Alice', 'Bob', 'Carol']
+    #editable table
+    table = ui.table(columns=[
+        {'name': 'variable_Name', 'label': 'Nom', 'field': 'variable_Name', 'align': 'left'},
+        {'name': 'variable_Value', 'label': 'Valeur', 'field': 'variable_Value'},
+    ], rows=[
 
-
-    def rename(e: events.GenericEventArguments) -> None:
-        row_id, name_index = e.args
-        for row in table.rows:
-            if row['id'] == row_id:
-                row['name'] = name_options[name_index]
-        ui.notify(f'Table.rows is now: {table.rows}')
-
-
-    table = ui.table(columns=columns, rows=rows).classes('w-full')
-    with table.add_slot('body-cell-name'):
-        with table.cell('name'):
-            ui.input(label='Nom variable', placeholder='Nom variable',
-                     on_change=lambda e: hello_World(),
-                     validation={'Alphanumeric et - ou _': lambda value : re.fullmatch(pat, value)})
-        with table.cell('age'):
-            ui.input(label='Valeur variable', placeholder='Valeur variable',
-                     on_change=lambda e: hello_World(),
-                     validation={'Alphanumeric et - ou _': lambda value: re.fullmatch(pat, value)})
-
-    ui.button("Ajouter", on_click=lambda: hello_World(), icon='add')
-
-
-    # compiling the pattern for alphanumeric string
-
-    # Prompts the user for input string
-    #test = input("Enter the string: ")
-
-    # Checks whether the whole string matches the re.pattern or not
-
-
-'''   
-    with ui.table(columns=columns, rows=data).classes('w-full bordered') as table:
-        table.add_slot(f'body-cell-value', """
-            <q-td :props="props">
-                <q-btn @click="$parent.$emit('action', props)" icon="send" flat />
+    ], row_key='name').classes('w-120')
+    with table.add_slot('header'):
+        with table.row():
+            table.header().props('auto-width')
+            for column in table.columns:
+                with table.header(column['name']):
+                    ui.label(column['label'])
+    table.add_slot('body', r'''
+        <q-tr :props="props">
+            <q-td auto-width >
+                <q-btn size="sm" color="warning" round dense icon="delete"
+                    @click="() => $parent.$emit('delete', props.row)"
+                />
             </q-td>
-        """)
-        table.on('action', lambda msg: print(msg))
+            <q-td key="variable_Name" :props="props">
+                {{ props.row.variable_Name }}
+                <q-popup-edit v-model="props.row.variable_Name" v-slot="scope"
+                    @update:model-value="() => $parent.$emit('rename', props.row)"
+                >
+                    <q-input v-model="scope.value" dense autofocus counter @keyup.enter="scope.set" />
+                </q-popup-edit>
+            </q-td>
+            <q-td key="variable_Value" :props="props">
+                {{ props.row.variable_Value }}
+                <q-popup-edit v-model="props.row.variable_Value" v-slot="scope"
+                    @update:model-value="() => $parent.$emit('rename', props.row)"
+                >
+                    <q-input v-model="scope.value" dense autofocus counter @keyup.enter="scope.set" />
+                </q-popup-edit>
+            </q-td>
+        </q-tr>
+    ''')
+    with table.add_slot('bottom-row'):
+        with table.cell().props('colspan=3'):
+            ui.button('', icon='add', color='accent', on_click=add_row).classes('w-full')
+    table.on('rename', rename)
+    table.on('delete', delete)
 
-'''
-
-
-
+#Start UI
 ui.run()
+
+
+
+
+
+
+
+
+
