@@ -4,7 +4,7 @@
 from nicegui import events, ui
 import re
 
-# Functions for editable table
+#region Functions for editable table
 def add_row() -> None:
         new_id = max((dx['id'] for dx in table.rows), default=-1) + 1
         name_new_variable = "Variable" + str(new_id)
@@ -46,15 +46,17 @@ def delete(e: events.GenericEventArguments) -> None:
 #Generic Functions
 def hello_World() :
     ui.notify('Hello World')
+#endregion
 
 #Regex for variable name and value
 pat = re.compile(r"[a-zA-Z0-9-_.]+(\s+[a-zA-Z0-9-_.]+)*")
 
-#Page Header
+#region Page Header
 with ui.header().classes(replace='row items-center') as header:
     ui.button("Fichier", on_click=lambda: hello_World()).props('flat color=white')
+#endregion
 
-#Left Menu with list of variables
+#region Left Menu with list of variables
 with ui.left_drawer().classes('bg-blue-100').props('width=600') as left_drawer:
     #Title for variable list
     ui.label('Liste des variables')
@@ -102,6 +104,16 @@ with ui.left_drawer().classes('bg-blue-100').props('width=600') as left_drawer:
             ui.button('', icon='add', color='accent', on_click=add_row).classes('w-full')
     table.on('rename', rename)
     table.on('delete', delete)
+#endregion
+
+#region Main body
+ui.label('Zone édition texte')
+editor = ui.codemirror('', language='HTML').classes('h-210')
+ui.select(editor.supported_themes, label='Theme') \
+    .classes('w-32').bind_value(editor, 'theme')
+editor.set_line_wrapping(True)
+editor.theme = "dracula"
+#endregion
 
 #Start UI
 ui.run()
