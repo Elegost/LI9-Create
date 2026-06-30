@@ -1,8 +1,15 @@
 #!/usr/bin/env python
 
 #Imports
-from nicegui import events, ui
+from nicegui import events, ui, api_router
 import re
+import api_router_example
+import class_example
+import function_example
+import home_page
+import theme
+
+from nicegui import app, ui
 
 #region Functions for editable table
 def add_row() -> None:
@@ -113,6 +120,7 @@ ui.select(editor.supported_themes, label='Theme') \
     .classes('w-32').bind_value(editor, 'theme')
 editor.set_line_wrapping(True)
 editor.theme = "dracula"
+
 #endregion
 
 #Start UI
